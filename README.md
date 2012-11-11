@@ -70,9 +70,9 @@ License
 	See the License for the specific language governing permissions and
 	limitations under the License.
 
-[1]: https://github.com/GBouerat/Crouton/screenshots/crouton_info_small.png
-[2]: https://github.com/GBouerat/Crouton/screenshots/crouton_confirm_small.png
-[3]: https://github.com/GBouerat/Crouton/screenshots/crouton_alert_small.png
-[4]: https://github.com/GBouerat/Crouton/screenshots/crouton_info.png
-[5]: https://github.com/GBouerat/Crouton/screenshots/crouton_confirm.png
-[6]: https://github.com/GBouerat/Crouton/screenshots/crouton_alert.png
+[1]: https://raw.github.com/GBouerat/Crouton/master/screenshots/crouton_info_small.png
+[2]: https://raw.github.com/GBouerat/Crouton/master/screenshots/crouton_confirm_small.png
+[3]: https://raw.github.com/GBouerat/Crouton/master/screenshots/crouton_alert_small.png
+[4]: https://raw.github.com/GBouerat/Crouton/master/screenshots/crouton_info.png
+[5]: https://raw.github.com/GBouerat/Crouton/master/screenshots/crouton_confirm.png
+[6]: https://raw.github.com/GBouerat/Crouton/master/screenshots/crouton_alert.png
