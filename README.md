@@ -27,15 +27,23 @@ Usage
 
 	mCroutonView = (CroutonView) findViewById(R.id.crouton);
 
-3. Now you're ready to show some croutons.
+3. In your `onResume` method, call `CroutonView.onResume()`.
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		mCroutonView.onResume();
+	}
+
+4. Now you're ready to show some croutons.
 
 	Create a Crouton for any CharSequence:
 
-	    Crouton.makeText(CroutonView, CharSequence, int).show();
+	    Crouton.makeText(mCroutonView, CharSequence, int).show();
 	    
 	Create a Crouton with a String from your application's resources:
 
-	    Crouton.makeText(CroutonView, int, int).show();
+	    Crouton.makeText(mCroutonView, int, int).show();
 
     The third parameter must be a Crouton style :
 
