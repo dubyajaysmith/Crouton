@@ -27,13 +27,13 @@ Usage
 
 	mCroutonView = (CroutonView) findViewById(R.id.crouton);
 
-3. In your `onResume` method, call `CroutonView.onResume()`.
+3. In your `onResume` method, call CroutonView.onResume().
 
-	@Override
-	protected void onResume() {
-		super.onResume();
-		mCroutonView.onResume();
-	}
+		@Override
+		protected void onResume() {
+			super.onResume();
+			mCroutonView.onResume();
+		}
 
 4. Now you're ready to show some croutons.
 
