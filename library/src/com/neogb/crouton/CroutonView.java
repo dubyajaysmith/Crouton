@@ -20,6 +20,7 @@ import java.util.Queue;
 
 import android.content.Context;
 import android.os.Handler;
+import android.os.Handler.Callback;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -33,7 +34,7 @@ import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-public class CroutonView extends TextView {
+public class CroutonView extends TextView implements Callback {
 
 	private static final int MESSAGE_SHOW = 0x0000;
 
@@ -45,9 +46,9 @@ public class CroutonView extends TextView {
 
     private Handler mHandler;
 
-    private Queue<Message> mMessageQueue;
+	private Queue<MessageHolder> mMessageHolderQueue;
 
-	protected Message mCurrentShowMessage;
+	private MessageHolder mCurrentMessageHolder;
 
     public CroutonView(Context context) {
         super(context);
@@ -74,22 +75,30 @@ public class CroutonView extends TextView {
 	}
 
 	@Override
+	protected void onDetachedFromWindow() {
+		mHandler.removeMessages(MESSAGE_HIDE, null);
+		super.onDetachedFromWindow();
+	}
+
+	@Override
 	public Parcelable onSaveInstanceState() {
 		Parcelable superState = super.onSaveInstanceState();
-		int size = mMessageQueue.size();
+		mHandler.removeMessages(MESSAGE_HIDE, null);
+		setVisibility(GONE);
+		int size = mMessageHolderQueue.size();
 		if (size == 0) {
 			if (getVisibility() == View.VISIBLE) {
-				return new SavedState(superState, true, mCurrentShowMessage);
+				return new SavedState(superState, true, mCurrentMessageHolder);
 			}
 			else {
 				return superState;
 			}
 		}
 		else {
-			Message[] array = new Message[size];
-			mMessageQueue.toArray(array);
+			MessageHolder[] array = new MessageHolder[size];
+			mMessageHolderQueue.toArray(array);
 			if (getVisibility() == View.VISIBLE) {
-				return new SavedState(superState, true, mCurrentShowMessage, array);
+				return new SavedState(superState, true, mCurrentMessageHolder, array);
 			}
 			else {
 				return new SavedState(superState, array);
@@ -108,61 +117,30 @@ public class CroutonView extends TextView {
 		super.onRestoreInstanceState(savedState.getSuperState());
 
 		if (savedState.wasVisible()) {
-			if (savedState.hasMessages()) {
-				Message[] messages = savedState.getMessages();
-				for (int i = 0; i < messages.length; i++) {
-					mMessageQueue.add(messages[i]);
+			if (savedState.hasMessageHolders()) {
+				MessageHolder[] messageHolders = savedState.getMessageHolders();
+				for (int i = 0; i < messageHolders.length; i++) {
+					mMessageHolderQueue.add(messageHolders[i]);
 				}
 			}
-			show(savedState.getText(), savedState.getStyle(), savedState.getDuration());
+			mHandler.sendMessage(Message.obtain(mHandler, MESSAGE_SHOW, savedState.getMessageHolder()));
 		}
-		else if (savedState.hasMessages()) {
-			Message[] messages = savedState.getMessages();
-			for (int i = 0; i < messages.length; i++) {
-				if (i == 0) {
-					mHandler.sendMessage(messages[i]);
-				}
-				else {
-					mMessageQueue.add(messages[i]);
-				}
+		else if (savedState.hasMessageHolders()) {
+			MessageHolder[] messageHolders = savedState.getMessageHolders();
+			Message message = Message.obtain(mHandler, MESSAGE_SHOW, messageHolders[0]);
+			for (int i = 1; i < messageHolders.length; i++) {
+				mMessageHolderQueue.add(messageHolders[i]);
 			}
+			mHandler.sendMessage(message);
 		}
 	}
 
     private void initView(Context context) {
     	if (isInEditMode()) return;
 
-        mMessageQueue = new LinkedList<Message>();
+		mMessageHolderQueue = new LinkedList<MessageHolder>();
 
-		mHandler = new Handler(new Handler.Callback() {
-
-			@Override
-			public boolean handleMessage(Message msg) {
-				switch (msg.what) {
-					case CroutonView.MESSAGE_SHOW:
-						mCurrentShowMessage = Message.obtain(msg);
-						setText((CharSequence) msg.obj);
-						setBackgroundResource(msg.arg1);
-						getParent().bringChildToFront(CroutonView.this);
-						startAnimation(mInAnimation);
-						mHandler.sendEmptyMessageDelayed(CroutonView.MESSAGE_HIDE, msg.arg2);
-						break;
-					default: // MESSAGE_HIDE
-						if (mMessageQueue.isEmpty()) {
-							startAnimation(mOutAnimation);
-						}
-						else {
-                            Message message = mMessageQueue.poll();
-							mCurrentShowMessage = Message.obtain(message);
-							setText((CharSequence) message.obj);
-                            setBackgroundResource(message.arg1);
-                            mHandler.sendEmptyMessageDelayed(CroutonView.MESSAGE_HIDE, message.arg2);
-						}
-						break;
-				}
-				return true;
-			}
-		});
+		mHandler = new Handler(this);
 
         mInAnimation = AnimationUtils.loadAnimation(context, android.R.anim.fade_in);
         mInAnimation.setAnimationListener(new AnimationListener() {
@@ -199,84 +177,146 @@ public class CroutonView extends TextView {
         });
     }
 
+	@Override
+	public boolean handleMessage(Message msg) {
+		MessageHolder holder;
+		switch (msg.what) {
+			case CroutonView.MESSAGE_SHOW:
+				mCurrentMessageHolder = new MessageHolder((MessageHolder) msg.obj);
+				holder = (MessageHolder) msg.obj;
+				setText(holder.text);
+				setBackgroundResource(holder.style);
+				getParent().bringChildToFront(CroutonView.this);
+				startAnimation(mInAnimation);
+				mHandler.sendEmptyMessageDelayed(CroutonView.MESSAGE_HIDE, holder.duration);
+				break;
+			default: // MESSAGE_HIDE
+				if (mMessageHolderQueue.isEmpty()) {
+					startAnimation(mOutAnimation);
+				}
+				else {
+					holder = (MessageHolder) mMessageHolderQueue.poll();
+					mCurrentMessageHolder = new MessageHolder(holder);
+					setText(holder.text);
+					setBackgroundResource(holder.style);
+					mHandler.sendEmptyMessageDelayed(CroutonView.MESSAGE_HIDE, holder.duration);
+				}
+				break;
+		}
+		return true;
+	}
+
 	void show(CharSequence text, int style, int duration) {
+		MessageHolder holder = new MessageHolder(text, style, duration);
 		if ((mHandler.hasMessages(MESSAGE_HIDE))) {
-		    mMessageQueue.add(Message.obtain(mHandler, MESSAGE_SHOW, style, duration, text));
+			mMessageHolderQueue.add(holder);
 		}
 		else {
-			Message.obtain(mHandler, MESSAGE_SHOW, style, duration, text).sendToTarget();
+			Message.obtain(mHandler, MESSAGE_SHOW, holder).sendToTarget();
 		}
     }
+
+	static class MessageHolder implements Parcelable {
+
+		CharSequence text;
+		int style;
+		int duration;
+
+		public MessageHolder(CharSequence text, int style, int duration) {
+			this.text = text;
+			this.style = style;
+			this.duration = duration;
+		}
+
+		public MessageHolder(Parcel source) {
+			text = source.readString();
+			style = source.readInt();
+			duration = source.readInt();
+		}
+
+		public MessageHolder(MessageHolder holder) {
+			this.text = holder.text;
+			this.style = holder.style;
+			this.duration = holder.duration;
+		}
+
+		@Override
+		public void writeToParcel(Parcel dest, int flags) {
+			dest.writeString(text.toString());
+			dest.writeInt(style);
+			dest.writeInt(duration);
+		}
+
+		public static final Creator<MessageHolder> CREATOR = new Creator<MessageHolder>() {
+
+			public MessageHolder createFromParcel(Parcel source) {
+				return new MessageHolder(source);
+			}
+
+			public MessageHolder[] newArray(int size) {
+				return new MessageHolder[size];
+			}
+		};
+
+		public int describeContents() {
+			return 0;
+		}
+
+	}
 
 	public static class SavedState extends BaseSavedState {
 
 		private final boolean mVisible;
-		private final Message[] mMessages;
-		private final String mText;
-		private final int mStyle;
-		private final int mDuration;
+		private final MessageHolder mMessageHolder;
+		private final MessageHolder[] mMessageHolders;
 
-		public SavedState(Parcelable superState, boolean visible, Message message) {
-			this(superState, visible, message, null);
+		public SavedState(Parcelable superState, boolean visible, MessageHolder messageHolder) {
+			this(superState, visible, messageHolder, null);
 		}
 
-		public SavedState(Parcelable superState, Message[] messages) {
-			this(superState, false, null, messages);
+		public SavedState(Parcelable superState, MessageHolder[] messageHolders) {
+			this(superState, false, null, messageHolders);
 		}
 
-		public SavedState(Parcelable superState, boolean visible, Message message, Message[] messages) {
+		public SavedState(Parcelable superState, boolean visible, MessageHolder messageHolder, MessageHolder[] messageHolders) {
 			super(superState);
 			mVisible = visible;
-			mText = (String) message.obj;
-			mStyle = message.arg1;
-			mDuration = message.arg2;
-			mMessages = messages;
+			mMessageHolder = messageHolder;
+			mMessageHolders = messageHolders;
 		}
 
 		public SavedState(Parcel in) {
 			super(in);
 			mVisible = in.readInt() == 1;
-			mText = in.readString();
-			mStyle = in.readInt();
-			mDuration = in.readInt();
-			mMessages = in.createTypedArray(Message.CREATOR);
+			mMessageHolder = in.readParcelable(getClass().getClassLoader());
+			mMessageHolders = in.createTypedArray(MessageHolder.CREATOR);
 		}
 
 		@Override
 		public void writeToParcel(Parcel dest, int flags) {
 			super.writeToParcel(dest, flags);
 			dest.writeInt(mVisible ? 1 : 0);
-			dest.writeString(mText);
-			dest.writeInt(mStyle);
-			dest.writeInt(mDuration);
-			dest.writeTypedArray(mMessages, flags); //TODO Can't marshal non-Parcelable objects across processes
+			dest.writeParcelable(mMessageHolder, flags);
+			dest.writeTypedArray(mMessageHolders, flags);
 		}
 
 		public boolean wasVisible() {
 			return mVisible;
 		}
 
-		public String getText() {
-			return mText;
+		public MessageHolder getMessageHolder() {
+			return mMessageHolder;
 		}
 
-		public int getStyle() {
-			return mStyle;
+		public boolean hasMessageHolders() {
+			return mMessageHolders != null;
 		}
 
-		public int getDuration() {
-			return mDuration;
+		public MessageHolder[] getMessageHolders() {
+			return mMessageHolders;
 		}
 
-		public boolean hasMessages() {
-			return mMessages != null;
-		}
-
-		public Message[] getMessages() {
-			return mMessages;
-		}
-
-		public static final Parcelable.Creator<SavedState> CREATOR = new Parcelable.Creator<SavedState>() {
+		public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
 
 			public SavedState createFromParcel(Parcel in) {
 				return new SavedState(in);
