@@ -27,27 +27,29 @@ import com.neogb.crouton.CroutonView;
 
 public class CroutonActivity extends Activity {
 
-    @Override
+	private CroutonView mCroutonView;
+
+	@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.crouton_activity);
         
         enableStrictMode();
 
-        final CroutonView croutonView = (CroutonView) findViewById(R.id.crouton);
+		mCroutonView = (CroutonView) findViewById(R.id.crouton);
 
         findViewById(R.id.info).setOnClickListener(new OnClickListener() {
 
             @Override
             public void onClick(View v) {
-                Crouton.makeText(croutonView, "Crouton type : Info", Crouton.STYLE_INFO).show();
+				Crouton.makeText(mCroutonView, "Crouton type : Info", Crouton.STYLE_INFO).show();
             }
         });
         findViewById(R.id.confirm).setOnClickListener(new OnClickListener() {
 
             @Override
             public void onClick(View v) {
-                Crouton.makeText(croutonView, "Crouton type : Confirm", Crouton.STYLE_CONFIRM)
+				Crouton.makeText(mCroutonView, "Crouton type : Confirm", Crouton.STYLE_CONFIRM)
                         .show();
             }
         });
@@ -55,10 +57,16 @@ public class CroutonActivity extends Activity {
 
             @Override
             public void onClick(View v) {
-                Crouton.makeText(croutonView, "Crouton type : Alert", Crouton.STYLE_ALERT).show();
+				Crouton.makeText(mCroutonView, "Crouton type : Alert", Crouton.STYLE_ALERT).show();
             }
         });
     }
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		mCroutonView.onResume();
+	}
 
     @TargetApi(9)
     private void enableStrictMode() {

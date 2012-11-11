@@ -80,14 +80,20 @@ public class CroutonView extends TextView implements Callback {
 		super.onDetachedFromWindow();
 	}
 
+	public void onResume() {
+		if (mCurrentMessageHolder != null) {
+			mHandler.sendMessage(Message.obtain(mHandler, MESSAGE_SHOW, mCurrentMessageHolder));
+		}
+	}
+
 	@Override
 	public Parcelable onSaveInstanceState() {
 		Parcelable superState = super.onSaveInstanceState();
 		mHandler.removeMessages(MESSAGE_HIDE, null);
-		setVisibility(GONE);
 		int size = mMessageHolderQueue.size();
 		if (size == 0) {
 			if (getVisibility() == View.VISIBLE) {
+				setVisibility(GONE);
 				return new SavedState(superState, true, mCurrentMessageHolder);
 			}
 			else {
@@ -98,6 +104,7 @@ public class CroutonView extends TextView implements Callback {
 			MessageHolder[] array = new MessageHolder[size];
 			mMessageHolderQueue.toArray(array);
 			if (getVisibility() == View.VISIBLE) {
+				setVisibility(GONE);
 				return new SavedState(superState, true, mCurrentMessageHolder, array);
 			}
 			else {
@@ -123,15 +130,14 @@ public class CroutonView extends TextView implements Callback {
 					mMessageHolderQueue.add(messageHolders[i]);
 				}
 			}
-			mHandler.sendMessage(Message.obtain(mHandler, MESSAGE_SHOW, savedState.getMessageHolder()));
+			mCurrentMessageHolder = savedState.getMessageHolder();
 		}
 		else if (savedState.hasMessageHolders()) {
 			MessageHolder[] messageHolders = savedState.getMessageHolders();
-			Message message = Message.obtain(mHandler, MESSAGE_SHOW, messageHolders[0]);
+			mCurrentMessageHolder = messageHolders[0];
 			for (int i = 1; i < messageHolders.length; i++) {
 				mMessageHolderQueue.add(messageHolders[i]);
 			}
-			mHandler.sendMessage(message);
 		}
 	}
 
